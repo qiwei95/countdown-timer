@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUMA College — Countdown Timer</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+
+  /* ===== BACKGROUND ===== */
+  body {
+    background: linear-gradient(145deg, #b2ede4 0%, #7dd6cc 35%, #4cb8b0 70%, #2a9d8f 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; min-height: 100vh;
+  }
+
+  /* ===== WAVE SHAPES (bottom) ===== */
+  .waves {
+    position: fixed; bottom: 0; left: 0; width: 100%; pointer-events: none; z-index: 0;
+  }
+  .wave { position: absolute; bottom: 0; left: 0; width: 200%; height: 120px; opacity: 0.25; }
+  .wave1 {
+    background: radial-gradient(ellipse 60% 80px at 50% 100%, #fff 60%, transparent 100%);
+    animation: waveMove 8s ease-in-out infinite alternate;
+  }
+  .wave2 {
+    background: radial-gradient(ellipse 80% 70px at 30% 100%, #ffffffaa 50%, transparent 100%);
+    animation: waveMove 12s ease-in-out infinite alternate-reverse;
+    opacity: 0.18;
+  }
+  @keyframes waveMove { 0%{transform:translateX(0)} 100%{transform:translateX(-8%)} }
+
+  /* ===== DECORATIVE BLOBS ===== */
+  .blob {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    background: rgba(255, 220, 80, 0.55);
+    animation: blobFloat 7s ease-in-out infinite alternate;
+  }
+  .blob1 { width: 110px; height: 110px; top: 8%; left: 6%; animation-delay: 0s; }
+  .blob2 { width: 70px;  height: 70px;  top: 18%; right: 8%; animation-delay: 2s; }
+  .blob3 { width: 50px;  height: 50px;  bottom: 22%; left: 10%; animation-delay: 4s; }
+  .blob4 { width: 90px;  height: 90px;  bottom: 12%; right: 5%; animation-delay: 1.5s; }
+  @keyframes blobFloat { 0%{transform:translateY(0) scale(1)} 100%{transform:translateY(-18px) scale(1.07)} }
+
+  /* ===== LOGO ===== */
+  .logo-link {
+    position: fixed; top: 18px; left: 22px; z-index: 10;
+    display: flex; align-items: center; text-decoration: none;
+  }
+  .logo-link img { height: 54px; width: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.18)); }
+
+  /* ===== GEAR / SETTINGS ICON ===== */
+  .gear-btn {
+    position: fixed; top: 18px; right: 22px; z-index: 10;
+    background: rgba(255,255,255,0.85); border: none; border-radius: 50%;
+    width: 46px; height: 46px; font-size: 22px; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15); transition: transform 0.3s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gear-btn:hover { transform: rotate(40deg); }
+
+  /* ===== MAIN CARD ===== */
+  .card {
+    position: relative; z-index: 5;
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(12px);
+    border-radius: 32px; padding: 36px 48px 32px;
+    box-shadow: 0 8px 40px rgba(30,120,110,0.25), 0 1.5px 0 rgba(255,255,255,0.5) inset;
+    text-align: center; min-width: 380px; max-width: 560px; width: 90vw;
+  }
+
+  /* ===== BANNER / TITLE ===== */
+  .banner {
+    font-size: 1.05rem; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.18); letter-spacing: 1px;
+    margin-bottom: 4px; min-height: 1.4em;
+  }
+  .subtitle {
+    font-size: 0.82rem; color: rgba(255,255,255,0.85); margin-bottom: 18px;
+    min-height: 1.2em;
+  }
+
+  /* ===== MODE BUTTONS ===== */
+  .mode-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .mode-btn {
+    background: rgba(255,255,255,0.92); color: #2a9d8f; border: 2px solid transparent;
+    border-radius: 50px; padding: 8px 18px; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    white-space: nowrap;
+  }
+  .mode-btn:hover { border-color: #2a9d8f; }
+  .mode-btn.active {
+    background: #2a9d8f; color: #fff; border-color: #2a9d8f;
+    box-shadow: 0 4px 14px rgba(42,157,143,0.45);
+  }
+
+  /* ===== PROGRESS RING ===== */
+  .ring-wrap { position: relative; display: inline-block; margin-bottom: 10px; }
+  svg.ring { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.25); }
+  .ring-fg { fill: none; stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset 0.9s linear, stroke 0.5s; }
+
+  /* ===== COUNTDOWN DISPLAY ===== */
+  .time-display {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: clamp(3.2rem, 10vw, 5.5rem); font-weight: 900;
+    color: #1a7a70; text-shadow: 0 2px 16px rgba(255,255,255,0.6);
+    letter-spacing: 4px; line-height: 1; font-variant-numeric: tabular-nums;
+    transition: color 0.4s;
+    user-select: none;
+  }
+  .time-display.urgent { color: #e05c00; }
+  .time-display.pulse { animation: pulse 0.5s ease-in-out infinite alternate; }
+  @keyframes pulse { 0%{transform:translate(-50%,-50%) scale(1)} 100%{transform:translate(-50%,-50%) scale(1.06)} }
+
+  /* ===== EDITABLE TIME INPUT ===== */
+  .time-input-wrap { margin-bottom: 6px; }
+  .time-input {
+    font-size: 1rem; padding: 6px 14px; border-radius: 50px;
+    border: 2px solid rgba(255,255,255,0.6); background: rgba(255,255,255,0.7);
+    color: #1a7a70; font-weight: 700; text-align: center; width: 130px;
+    outline: none; transition: border 0.2s;
+  }
+  .time-input:focus { border-color: #2a9d8f; background: #fff; }
+  .time-input-hint { font-size: 0.72rem; color: rgba(255,255,255,0.8); margin-bottom: 12px; }
+
+  /* ===== QUICK PRESET BUTTONS ===== */
+  .quick-btns { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .quick-btn {
+    background: rgba(255,255,255,0.88); color: #2a9d8f;
+    border: 2px solid rgba(255,255,255,0.5); border-radius: 50px;
+    padding: 7px 20px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .quick-btn:hover { background: #2a9d8f; color: #fff; border-color: #2a9d8f; }
+
+  /* ===== CONTROL BUTTONS ===== */
+  .ctrl-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .ctrl-btn {
+    background: rgba(255,255,255,0.9); color: #2a9d8f;
+    border: 2px solid rgba(255,255,255,0.6); border-radius: 50px;
+    padding: 11px 30px; font-size: 1rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1); transition: all 0.2s;
+    min-width: 100px;
+  }
+  .ctrl-btn:hover { background: #2a9d8f; color: #fff; }
+  .ctrl-btn.start { background: #2a9d8f; color: #fff; }
+  .ctrl-btn.start:hover { background: #1a7a70; }
+  .ctrl-btn.music-off { background: #e05c00 !important; color: #fff !important; border-color: #e05c00 !important; }
+
+  /* ===== FLASH OVERLAY ===== */
+  #flash {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(255,255,255,0); pointer-events: none;
+    animation: none;
+  }
+  #flash.flashing { animation: flashAnim 0.4s ease-in-out 6; }
+  @keyframes flashAnim {
+    0%{background:rgba(255,255,255,0)} 50%{background:rgba(255,200,60,0.55)} 100%{background:rgba(255,255,255,0)}
+  }
+
+  /* ===== SETTINGS PANEL ===== */
+  .settings-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-panel {
+    background: #fff; border-radius: 24px; padding: 32px 36px;
+    min-width: 340px; max-width: 480px; width: 92vw;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  }
+  .settings-panel h2 { color: #2a9d8f; font-size: 1.3rem; margin-bottom: 20px; }
+  .settings-panel label { display: block; font-size: 0.85rem; color: #444; margin-bottom: 4px; font-weight: 600; }
+  .settings-panel input[type="text"],
+  .settings-panel input[type="number"] {
+    width: 100%; padding: 8px 12px; border: 2px solid #b2ede4; border-radius: 10px;
+    font-size: 0.95rem; color: #1a7a70; margin-bottom: 14px; outline: none;
+    transition: border 0.2s;
+  }
+  .settings-panel input:focus { border-color: #2a9d8f; }
+  .settings-row { display: flex; gap: 12px; }
+  .settings-row > div { flex: 1; }
+  .settings-close {
+    background: #2a9d8f; color: #fff; border: none; border-radius: 50px;
+    padding: 10px 28px; font-size: 1rem; font-weight: 700; cursor: pointer;
+    margin-top: 6px; transition: background 0.2s; width: 100%;
+  }
+  .settings-close:hover { background: #1a7a70; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 480px) {
+    .card { padding: 24px 18px 22px; min-width: unset; }
+    .mode-btns { gap: 6px; }
+    .mode-btn { padding: 7px 12px; font-size: 0.76rem; }
+    .ctrl-btn { padding: 9px 18px; font-size: 0.9rem; min-width: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Decorative elements -->
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+<div class="blob blob3"></div>
+<div class="blob blob4"></div>
+<div class="waves">
+  <div class="wave wave1"></div>
+  <div class="wave wave2"></div>
+</div>
+
+<!-- Flash overlay (time's up) -->
+<div id="flash"></div>
+
+<!-- Logo -->
+<a class="logo-link" href="https://tools.suma.edu.my/" target="_blank" rel="noopener">
+  <img src="LOGO_3.png" alt="SUMA College" onerror="this.style.display='none'">
+</a>
+
+<!-- Gear / Settings -->
+<button class="gear-btn" onclick="openSettings()" title="Settings">⚙️</button>
+
+<!-- Main Card -->
+<div class="card">
+  <div class="banner" id="bannerText">SUMA College — School of Digital Marketing</div>
+  <div class="subtitle" id="subtitleText">Presenter Timer</div>
+
+  <!-- Mode Buttons -->
+  <div class="mode-btns">
+    <button class="mode-btn active" id="modeBtn0" onclick="selectMode(0)">☕ Break</button>
+    <button class="mode-btn"        id="modeBtn1" onclick="selectMode(1)">🎤 Opening</button>
+    <button class="mode-btn"        id="modeBtn2" onclick="selectMode(2)">✏️ Practice</button>
+    <button class="mode-btn"        id="modeBtn3" onclick="selectMode(3)">💎 Diamond Sharing</button>
+  </div>
+
+  <!-- Progress Ring + Time Display -->
+  <div class="ring-wrap">
+    <svg class="ring" width="220" height="220" viewBox="0 0 220 220">
+      <circle class="ring-bg" cx="110" cy="110" r="98" stroke-width="10"/>
+      <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="98" stroke-width="10"
+        stroke-dasharray="615.75" stroke-dashoffset="0"/>
+    </svg>
+    <div class="time-display" id="timeDisplay">10:00</div>
+  </div>
+
+  <!-- Custom time input -->
+  <div class="time-input-wrap">
+    <input class="time-input" id="customTime" type="text" placeholder="MM:SS or mins"
+      title="Enter time e.g. 5:30 or 5" onchange="applyCustomTime()">
+  </div>
+  <div class="time-input-hint">Type custom time (e.g. 5:30) then press Enter</div>
+
+  <!-- Quick presets -->
+  <div class="quick-btns">
+    <button class="quick-btn" onclick="setQuick(5)">5 分鐘</button>
+    <button class="quick-btn" onclick="setQuick(10)">10 分鐘</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="ctrl-btns">
+    <button class="ctrl-btn start" id="startBtn" onclick="toggleStartPause()">▶ Start</button>
+    <button class="ctrl-btn" onclick="resetTimer()">↺ Reset</button>
+    <button class="ctrl-btn" id="musicBtn" onclick="toggleMusic()" title="Toggle music">🎵</button>
+  </div>
+</div>
+
+<!-- Settings Panel -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <h2>⚙️ Customise</h2>
+
+    <label>Banner Text</label>
+    <input type="text" id="sBanner" value="SUMA College — School of Digital Marketing">
+
+    <label>Subtitle Text</label>
+    <input type="text" id="sSubtitle" value="Presenter Timer">
+
+    <div class="settings-row">
+      <div>
+        <label>☕ Break (min)</label>
+        <input type="number" id="sTime0" value="10" min="1" max="180">
+      </div>
+      <div>
+        <label>🎤 Opening (min)</label>
+        <input type="number" id="sTime1" value="10" min="1" max="180">
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <label>✏️ Practice (min)</label>
+        <input type="number" id="sTime2" value="10" min="1" max="180">
+      </div>
+      <div>
+        <label>💎 Diamond (min)</label>
+        <input type="number" id="sTime3" value="10" min="1" max="180">
+      </div>
+    </div>
+
+    <button class="settings-close" onclick="applySettings()">✓ Apply & Close</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const MODES = [
+  { name: '☕ Break',           key: 'break',    defaultMins: 10 },
+  { name: '🎤 Opening',         key: 'opening',  defaultMins: 10 },
+  { name: '✏️ Practice',        key: 'practice', defaultMins: 10 },
+  { name: '💎 Diamond Sharing', key: 'diamond',  defaultMins: 10 },
+];
+
+let modeTimes   = [600, 600, 600, 600]; // seconds for each mode (editable)
+let currentMode = 0;
+let totalSecs   = modeTimes[0];
+let remainSecs  = totalSecs;
+let running     = false;
+let musicOn     = true;
+let timer       = null;
+let audioCtx    = null;
+let loopNode    = null;   // currently playing music node
+let alertPlayed = false;
+
+const RING_CIRC = 2 * Math.PI * 98; // ~615.75
+
+/* ============================================================
+   AUDIO CONTEXT (lazy init on first user interaction)
+   ============================================================ */
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+/* ---- Music themes per mode ---- */
+// Each theme is a function(ctx) -> ScheduledSourceNode array that loops
+// We use ScriptProcessor-free approach: schedule repeating notes
+
+function stopMusic() {
+  if (loopNode) { try { loopNode.stop(); } catch(e){} loopNode = null; }
+  if (loopGain) { try { loopGain.disconnect(); } catch(e){} loopGain = null; }
+}
+let loopGain = null;
+
+/* Simple looping synth: plays a sequence of notes repeatedly */
+function playMusicLoop(noteSeq, tempo) {
+  // noteSeq: [{freq, dur, vel}]  tempo: beat duration in seconds
+  const ctx = getAudioCtx();
+  const gainNode = ctx.createGain();
+  gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+  gainNode.connect(ctx.destination);
+  loopGain = gainNode;
+
+  const totalDur = noteSeq.reduce((s, n) => s + n.dur, 0) * tempo;
+
+  function scheduleLoop(startTime) {
+    let t = startTime;
+    noteSeq.forEach(n => {
+      if (!n.freq) { t += n.dur * tempo; return; }
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.type = n.type || 'sine';
+      osc.frequency.setValueAtTime(n.freq, t);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime((n.vel||0.5), t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t + n.dur * tempo - 0.02);
+      osc.connect(g); g.connect(gainNode);
+      osc.start(t); osc.stop(t + n.dur * tempo);
+      t += n.dur * tempo;
+    });
+    // schedule next loop
+    const src = ctx.createConstantSource ? null : null;
+    loopNode = { stop: () => { scheduleNextLoop = false; } };
+    if (scheduleNextLoop) setTimeout(() => scheduleLoop(startTime + totalDur), (totalDur - 0.3) * 1000);
+  }
+  let scheduleNextLoop = true;
+  // override loopNode.stop so flag is cleared
+  loopNode = { stop: () => { scheduleNextLoop = false; gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5); } };
+  scheduleLoop(ctx.currentTime + 0.1);
+}
+
+/* ---- Mode music definitions ---- */
+const MUSIC_THEMES = [
+  // 0: Break — gentle soft piano chords
+  () => playMusicLoop([
+    {freq:261.6,dur:2,vel:0.4},{freq:329.6,dur:2,vel:0.3},{freq:392,dur:2,vel:0.35},
+    {freq:329.6,dur:2,vel:0.3},{freq:0,dur:1},{freq:220,dur:2,vel:0.3},
+    {freq:261.6,dur:2,vel:0.35},{freq:0,dur:1}
+  ], 0.55),
+
+  // 1: Opening — upbeat bright arpeggio
+  () => playMusicLoop([
+    {freq:440,dur:1,vel:0.45,type:'triangle'},{freq:550,dur:1,vel:0.4,type:'triangle'},
+    {freq:660,dur:1,vel:0.45,type:'triangle'},{freq:880,dur:1,vel:0.35,type:'triangle'},
+    {freq:660,dur:1,vel:0.4,type:'triangle'},{freq:550,dur:1,vel:0.4,type:'triangle'},
+    {freq:440,dur:2,vel:0.4,type:'triangle'},{freq:0,dur:1}
+  ], 0.38),
+
+  // 2: Practice — calm focus drone
+  () => playMusicLoop([
+    {freq:174.6,dur:4,vel:0.25,type:'sine'},{freq:220,dur:4,vel:0.2,type:'sine'},
+    {freq:261.6,dur:4,vel:0.22,type:'sine'},{freq:220,dur:4,vel:0.2,type:'sine'},
+  ], 0.6),
+
+  // 3: Diamond Sharing — warm sparkle chimes
+  () => playMusicLoop([
+    {freq:523.25,dur:1,vel:0.5,type:'sine'},{freq:659.25,dur:1,vel:0.45,type:'sine'},
+    {freq:783.99,dur:1,vel:0.5,type:'sine'},{freq:1046.5,dur:1,vel:0.4,type:'sine'},
+    {freq:0,dur:1},{freq:783.99,dur:1,vel:0.4,type:'sine'},
+    {freq:659.25,dur:1,vel:0.45,type:'sine'},{freq:523.25,dur:2,vel:0.45,type:'sine'},
+  ], 0.42),
+];
+
+function startMusic() {
+  stopMusic();
+  if (musicOn) MUSIC_THEMES[currentMode]();
+}
+
+/* ---- Alert chime (3 bell tones) ---- */
+function playAlert() {
+  const ctx = getAudioCtx();
+  [0, 0.55, 1.1].forEach((delay, i) => {
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880 + i * 220, ctx.currentTime + delay);
+    g.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + 1.3);
+  });
+}
+
+/* ============================================================
+   TIMER LOGIC
+   ============================================================ */
+function selectMode(idx) {
+  if (running) resetTimer();
+  currentMode = idx;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+  totalSecs  = modeTimes[idx];
+  remainSecs = totalSecs;
+  alertPlayed = false;
+  updateDisplay();
+  updateRing();
+  if (running && musicOn) startMusic();
+}
+
+function setQuick(mins) {
+  if (running) { clearInterval(timer); running = false; updateStartBtn(); }
+  modeTimes[currentMode] = mins * 60;
+  totalSecs  = modeTimes[currentMode];
+  remainSecs = totalSecs;
+  alertPlayed = false;
+  document.getElementById('sTime' + currentMode).value = mins;
+  updateDisplay();
+  updateRing();
+}
+
+function applyCustomTime() {
+  const raw = document.getElementById('customTime').value.trim();
+  let secs = 0;
+  if (raw.includes(':')) {
+    const parts = raw.split(':');
+    secs = parseInt(parts[0]||0)*60 + parseInt(parts[1]||0);
+  } else {
+    secs = parseFloat(raw) * 60;
+  }
+  secs = Math.round(secs);
+  if (!secs || secs < 1) return;
+  if (running) { clearInterval(timer); running = false; updateStartBtn(); }
+  modeTimes[currentMode] = secs;
+  totalSecs  = secs;
+  remainSecs = secs;
+  alertPlayed = false;
+  updateDisplay();
+  updateRing();
+  document.getElementById('customTime').value = '';
+}
+document.getElementById('customTime').addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyCustomTime();
+});
+
+function toggleStartPause() {
+  getAudioCtx(); // ensure context created on user gesture
+  if (remainSecs <= 0) { resetTimer(); return; }
+  running = !running;
+  updateStartBtn();
+  if (running) {
+    if (musicOn) startMusic();
+    timer = setInterval(tick, 1000);
+  } else {
+    clearInterval(timer);
+    stopMusic();
+  }
+}
+
+function resetTimer() {
+  clearInterval(timer);
+  running = false;
+  alertPlayed = false;
+  remainSecs = modeTimes[currentMode];
+  totalSecs  = remainSecs;
+  stopMusic();
+  updateStartBtn();
+  updateDisplay();
+  updateRing();
+  // remove urgent styling
+  const disp = document.getElementById('timeDisplay');
+  disp.classList.remove('urgent','pulse');
+}
+
+function tick() {
+  if (remainSecs > 0) remainSecs--;
+  updateDisplay();
+  updateRing();
+  if (remainSecs <= 10 && remainSecs > 0) {
+    const disp = document.getElementById('timeDisplay');
+    disp.classList.add('urgent','pulse');
+  }
+  if (remainSecs === 0 && !alertPlayed) {
+    alertPlayed = true;
+    clearInterval(timer); running = false;
+    updateStartBtn();
+    stopMusic();
+    playAlert();
+    flashScreen();
+    const disp = document.getElementById('timeDisplay');
+    disp.classList.add('urgent');
+    disp.classList.remove('pulse');
+  }
+}
+
+function flashScreen() {
+  const f = document.getElementById('flash');
+  f.classList.remove('flashing');
+  void f.offsetWidth; // reflow
+  f.classList.add('flashing');
+  f.addEventListener('animationend', () => f.classList.remove('flashing'), {once:true});
+}
+
+/* ============================================================
+   MUSIC TOGGLE
+   ============================================================ */
+function toggleMusic() {
+  getAudioCtx();
+  musicOn = !musicOn;
+  const btn = document.getElementById('musicBtn');
+  btn.classList.toggle('music-off', !musicOn);
+  if (musicOn && running) startMusic();
+  else stopMusic();
+}
+
+/* ============================================================
+   DISPLAY HELPERS
+   ============================================================ */
+function fmt(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+
+function updateDisplay() {
+  document.getElementById('timeDisplay').textContent = fmt(remainSecs);
+}
+
+function updateRing() {
+  const pct = totalSecs > 0 ? remainSecs / totalSecs : 1;
+  const offset = RING_CIRC * (1 - pct);
+  const fg = document.getElementById('ringFg');
+  fg.style.strokeDashoffset = offset;
+  fg.style.stroke = remainSecs <= 10 && remainSecs < totalSecs ? '#e05c00' : '#fff';
+}
+
+function updateStartBtn() {
+  const btn = document.getElementById('startBtn');
+  if (running)            { btn.textContent = '⏸ Pause'; btn.classList.add('start'); }
+  else if (remainSecs<=0) { btn.textContent = '↺ Restart'; btn.classList.remove('start'); }
+  else                    { btn.textContent = '▶ Start'; btn.classList.add('start'); }
+}
+
+/* ============================================================
+   SETTINGS PANEL
+   ============================================================ */
+function openSettings() {
+  document.getElementById('sBanner').value   = document.getElementById('bannerText').textContent;
+  document.getElementById('sSubtitle').value = document.getElementById('subtitleText').textContent;
+  MODES.forEach((_,i) => document.getElementById('sTime'+i).value = Math.round(modeTimes[i]/60));
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+
+function applySettings() {
+  document.getElementById('bannerText').textContent   = document.getElementById('sBanner').value || 'SUMA College';
+  document.getElementById('subtitleText').textContent = document.getElementById('sSubtitle').value;
+  MODES.forEach((_,i) => {
+    const v = parseInt(document.getElementById('sTime'+i).value) || 10;
+    modeTimes[i] = v * 60;
+  });
+  document.getElementById('settingsOverlay').classList.remove('open');
+  // If not running, refresh current display
+  if (!running) {
+    remainSecs = modeTimes[currentMode];
+    totalSecs  = remainSecs;
+    alertPlayed = false;
+    updateDisplay(); updateRing();
+  }
+}
+
+// Close settings on backdrop click
+document.getElementById('settingsOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settingsOverlay')) applySettings();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+updateDisplay();
+updateRing();
+</script>
+</body>
+</html>
